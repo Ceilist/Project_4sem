@@ -2,6 +2,7 @@
 #include <vector>
 #include <memory>
 #include <optional>
+#include <iostream> // Добавлено для возможной отладки
 
 #include "OpticalElement.hpp"
 #include "PointSource.hpp"
@@ -16,19 +17,16 @@ std::vector<std::unique_ptr<OpticalElement>> elements;
 std::vector<const PointSource *> sources; // Вектор указателей на источники
 std::vector<RayPath> rayPaths;            // Вектор путей лучей
 
-const float MAX_RAY_LENGTH = 2000.f;
+const float MAX_RAY_LENGTH = 2000.f; // максимальная длина луча
 
-void rebuildSourcesVector()
-{
-    sources.clear();
-    for (const auto &el : elements)
-    {
-        if (!el)
-            continue;
-
-        if (auto *src = dynamic_cast<const PointSource *>(el.get()))
-        {
-            sources.push_back(src);
+void handleEvents(sf::RenderWindow &window) {
+    sf::Event event;
+    while (window.pollEvent(event)) {
+        switch (event.type) {
+            case sf::Event::Closed:
+                window.close();
+                break;
+            default: break;
         }
     }
 }
@@ -50,29 +48,22 @@ void traceRays()
         {
             RayPath path; // Путь для текущего индивидуального луча
             path.push_back(sf::Vertex(currentRay.origin, currentRay.color));
-            size_t sourceElementIndex = static_cast<size_t>(-1);
-            for (size_t i = 0; i < elements.size(); ++i)
-            {
-                if (elements[i].get() == source)
-                {
-                    sourceElementIndex = i;
-                    break;
-                }
-            }
-            size_t lastHitIndex = sourceElementIndex;
 
             while (currentRay.bounces_left > 0)
             {
                 VectorMath::IntersectionResult closestIntersection;
                 closestIntersection.distance = MAX_RAY_LENGTH; // Инициализируем максимальным расстоянием
                 const OpticalElement *hitElement = nullptr;
-                size_t currentHitIndex = static_cast<size_t>(-1);
+                // size_t currentHitIndex = static_cast<size_t>(-1); // Индекс элемента, с которым произошло пересечение
 
                 // Ищем пересечения со всеми оптическими элементами
                 for (size_t i = 0; i < elements.size(); ++i)
                 {
-                    if (!elements[i] || elements[i]->getType() == OpticalElement::Type::SOURCE)
+                    if (!elements[i] || elements[i]->getType() == OpticalElement::Type::SOURCE) // Источники не должны прерывать лучи
                         continue;
+
+                    // if (elements[i].get() == reinterpret_cast<const OpticalElement*>(source) && path.size() == 1) // Не пересекать самого себя на первом шаге
+                    //    continue;
 
                     VectorMath::IntersectionResult intersection = elements[i]->findIntersection(currentRay);
 
@@ -81,7 +72,7 @@ void traceRays()
                     {
                         closestIntersection = intersection;
                         hitElement = elements[i].get();
-                        currentHitIndex = i;
+                        // currentHitIndex = i;
                     }
                 }
 
@@ -93,7 +84,7 @@ void traceRays()
                     if (interaction.outgoingRay.has_value() && interaction.outgoingRay.value().bounces_left > 0)
                     {
                         currentRay = interaction.outgoingRay.value(); // Продолжаем трассировку с новым лучом
-                        lastHitIndex = currentHitIndex;               // Запоминаем элемент, с которым было взаимодействие
+                        // lastHitIndex = currentHitIndex; // Запоминаем элемент, с которым было взаимодействие
                     }
                     else
                     {
@@ -114,58 +105,81 @@ void traceRays()
     }
 }
 
-// Константы окна
+void render(sf::RenderWindow &window) {
+    traceRays(); // Вызываем трассировку на каждом кадре
+
+    window.clear(sf::Color::Black);
+
+    // Отрисовка оптических элементов
+    for (const auto& el : elements) {
+        if (el) {
+            if (auto* mirror = dynamic_cast<Mirror*>(el.get())) {
+                sf::Vertex line[] = {
+                    sf::Vertex(mirror->getP1(), mirror->color),
+                    sf::Vertex(mirror->getP2(), mirror->color)
+                };
+                window.draw(line, 2, sf::Lines);
+            } else if (auto* source = dynamic_cast<PointSource*>(el.get())) {
+                sf::CircleShape shape(5.f); // Небольшой круг для источника
+                shape.setFillColor(source->color);
+                shape.setOrigin(5.f, 5.f);
+                shape.setPosition(source->position);
+                window.draw(shape);
+            }
+        }
+    }
+
+    // Отрисовка путей лучей
+    for (const auto &p : rayPaths)
+    {
+        if (p.size() >= 2)
+        {
+            window.draw(p.data(), p.size(), sf::LinesStrip);
+        }
+    }
+
+    window.display();
+}
+
+void rebuildSourcesVector()
+{
+    sources.clear();
+    for (const auto &el : elements)
+    {
+        if (!el)
+            continue;
+
+        if (auto *src = dynamic_cast<const PointSource *>(el.get()))
+        {
+            sources.push_back(src);
+        }
+    }
+}
+
+
 const unsigned int WINDOW_WIDTH = 1200;
 const unsigned int WINDOW_HEIGHT = 800;
 
-// Псевдонимы и структуры для данных 
-using RayPath = std::vector<sf::Vertex>;
 sf::Vector2f mousePos;
 
-// Прототипы функций 
-void handleEvents(sf::RenderWindow &window);
-void traceRays(/* ... */); // Пока пустая или заглушка
-void render(sf::RenderWindow &window);
 
 int main() {
     sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "SFML Ray Optics v1");
+    window.setFramerateLimit(60); 
+
+    // Пример
+    elements.push_back(std::make_unique<PointSource>(sf::Vector2f(100.f, WINDOW_HEIGHT / 2.f), 360));
+    elements.push_back(std::make_unique<Mirror>(sf::Vector2f(WINDOW_WIDTH / 2.f, WINDOW_HEIGHT / 2.f), 200.f, (float)M_PI / 4.f));
+
+    rebuildSourcesVector(); // Обновляем список источников после добавления элементов
 
     while (window.isOpen()) {
         mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
-        handleEvents(window); 
-        render(window); 
+        handleEvents(window);
+        render(window);
     }
     return 0;
 }
 
-// Реализация handleEvents 
-void handleEvents(sf::RenderWindow &window) {
-    sf::Event event;
-    while (window.pollEvent(event)) {
-        switch (event.type) {
-            case sf::Event::Closed:
-                window.close();
-                break;
-                
-            default: break;
-        }
-    }
-}
 
-        traceRays(); // Вызываем трассировку на каждом кадре (для теста)
 
-        window.clear(sf::Color::Black);
-        
-        for (const auto &p : rayPaths)
-        {
-            if (p.size() >= 2)
-            {
-                window.draw(p.data(), p.size(), sf::LinesStrip);
-            }
-        }
-
-        window.display();
-    }
-
-    return 0;
-}
