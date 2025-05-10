@@ -114,21 +114,43 @@ void traceRays()
     }
 }
 
-int main()
-{
-    sf::RenderWindow window(sf::VideoMode(1200, 800), "Interactive Ray Optics - Backend Logic");
+// Константы окна
+const unsigned int WINDOW_WIDTH = 1200;
+const unsigned int WINDOW_HEIGHT = 800;
 
-    elements.push_back(std::make_unique<PointSource>(sf::Vector2f(100.f, 300.f)));
-    rebuildSourcesVector(); // Обновляем список источников
+// Псевдонимы и структуры для данных 
+using RayPath = std::vector<sf::Vertex>;
+sf::Vector2f mousePos;
 
-    while (window.isOpen())
-    {
-        sf::Event event;
-        while (window.pollEvent(event))
-        {
-            if (event.type == sf::Event::Closed)
+// Прототипы функций 
+void handleEvents(sf::RenderWindow &window);
+void traceRays(/* ... */); // Пока пустая или заглушка
+void render(sf::RenderWindow &window);
+
+int main() {
+    sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "SFML Ray Optics v1");
+
+    while (window.isOpen()) {
+        mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+        handleEvents(window); 
+        render(window); 
+    }
+    return 0;
+}
+
+// Реализация handleEvents 
+void handleEvents(sf::RenderWindow &window) {
+    sf::Event event;
+    while (window.pollEvent(event)) {
+        switch (event.type) {
+            case sf::Event::Closed:
                 window.close();
+                break;
+                
+            default: break;
         }
+    }
+}
 
         traceRays(); // Вызываем трассировку на каждом кадре (для теста)
 
