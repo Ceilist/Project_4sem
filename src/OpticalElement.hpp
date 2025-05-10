@@ -32,8 +32,20 @@ class OpticalElement
 public:
     virtual ~OpticalElement() = default;
 
-    // Отрисовка элемента
-    virtual void draw(sf::RenderTarget &target) const = 0;
+    // Поиск точки пересечения луча с элементом
+    virtual VectorMath::IntersectionResult findIntersection(const Ray &ray) const
+    {
+        return {};
+    }
+    // Расчет взаимодействия луча (отражение/преломление) в точке пересечения
+    virtual RayAction interact(const Ray &incomingRay, const sf::Vector2f &intersectionPoint) const { return RayAction(); }
+
+    // Проверка, находится ли точка рядом с элементом (для выбора мышью)
+    virtual bool isPointNear(const sf::Vector2f &point, float tolerance = 5.0f) const = 0;
+    // Перемещение элемента на заданный вектор
+    virtual void move(const sf::Vector2f &delta) = 0;
+    // Получение центральной точки элемента
+    virtual sf::Vector2f getCenter() const = 0;
 
     // Перечисление типов элементов
     enum class Type
@@ -44,6 +56,7 @@ public:
         LENS,
         SPHERICAL_MIRROR
     };
+    
     // Получение типа конкретного элемента
     virtual Type getType() const = 0;
 };
