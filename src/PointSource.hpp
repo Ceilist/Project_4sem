@@ -65,6 +65,13 @@ public:
         }
         return rays;
     }
+    void draw(sf::RenderTarget &target) const override {
+        sf::CircleShape shape(5.f);
+        shape.setFillColor(color);
+        shape.setOrigin(5.f, 5.f);
+        shape.setPosition(position);
+        target.draw(shape);
+    }
 
     bool isPointNear(const sf::Vector2f &point, float tolerance = 8.0f) const override
     {

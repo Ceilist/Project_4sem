@@ -34,6 +34,16 @@ public:
         return center + dir * (length / 2.f);
     }
 
+    void draw(sf::RenderTarget &target) const override
+    {
+        sf::RectangleShape rect(sf::Vector2f(length, 4.f));
+        rect.setOrigin(length / 2.f, 2.f);
+        rect.setPosition(center);
+        rect.setRotation(angle * 180.f / M_PI);
+        rect.setFillColor(color);
+        target.draw(rect);
+    }
+
     VectorMath::IntersectionResult findIntersection(const Ray &ray) const override { return VectorMath::raySegmentIntersection(ray.origin, ray.direction, getP1(), getP2()); }
 
     RayAction interact(const Ray &incomingRay, const sf::Vector2f &intersectionPoint) const override

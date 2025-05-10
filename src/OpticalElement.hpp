@@ -31,7 +31,9 @@ class OpticalElement
 {
 public:
     virtual ~OpticalElement() = default;
-
+    
+    // Отрисовка элемента
+    virtual void draw(sf::RenderTarget &target) const = 0;
     // Поиск точки пересечения луча с элементом
     virtual VectorMath::IntersectionResult findIntersection(const Ray &ray) const
     {

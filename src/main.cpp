@@ -9,6 +9,13 @@
 #include "Mirror.hpp"
 #include "VectorMath.hpp"
 
+enum class Mode {
+    IDLE,
+    PLACING_START,
+    PLACING_END,
+    DRAGGING_ELEMENT
+    };
+
 // Псевдоним типа для пути луча
 using RayPath = std::vector<sf::Vertex>;
 
@@ -16,17 +23,80 @@ using RayPath = std::vector<sf::Vertex>;
 std::vector<std::unique_ptr<OpticalElement>> elements;
 std::vector<const PointSource *> sources; // Вектор указателей на источники
 std::vector<RayPath> rayPaths;            // Вектор путей лучей
+Mode currentMode = Mode::IDLE;
+std::optional<size_t> selectedElementIndex;
+OpticalElement::Type placementType = OpticalElement::Type::NONE;
+sf::Vector2f mousePos;
+sf::Vector2f placementStartPos;
+sf::VertexArray placementPreviewLine{sf::Lines, 2};
+sf::Vector2f lastMousePos;
 
 const float MAX_RAY_LENGTH = 2000.f; // максимальная длина луча
 
+std::optional<size_t> findElementAt(const sf::Vector2f &pos) {
+    for (int i = elements.size() - 1; i >= 0; --i) {
+        if (elements[i] && elements[i]->isPointNear(pos)) {
+            return static_cast<size_t>(i);
+        }
+    }
+    return std::nullopt;
+}
+
+void rebuildSourcesVector();
 void handleEvents(sf::RenderWindow &window) {
     sf::Event event;
     while (window.pollEvent(event)) {
-        switch (event.type) {
-            case sf::Event::Closed:
-                window.close();
-                break;
-            default: break;
+        // ... case Closed ...
+        if (event.type == sf::Event::KeyPressed) {
+            if (event.key.code == sf::Keyboard::Escape) {
+                currentMode = Mode::IDLE;
+                selectedElementIndex.reset();
+                placementType = OpticalElement::Type::NONE;
+            } else if (event.key.code == sf::Keyboard::S && currentMode == Mode::IDLE) {
+                elements.push_back(std::make_unique<PointSource>(mousePos));
+                rebuildSourcesVector();
+            } else if (event.key.code == sf::Keyboard::M && currentMode == Mode::IDLE) {
+                currentMode = Mode::PLACING_START;
+                placementType = OpticalElement::Type::MIRROR;
+                selectedElementIndex.reset();
+            }
+        } else if (event.type == sf::Event::MouseButtonPressed) {
+            if (event.mouseButton.button == sf::Mouse::Left) {
+                if (currentMode == Mode::PLACING_START) {
+                    placementStartPos = mousePos;
+                    placementPreviewLine[0].position = placementStartPos;
+                    placementPreviewLine[1].position = mousePos; // Init end point
+                    currentMode = Mode::PLACING_END;
+                } else if (currentMode == Mode::PLACING_END) {
+                    if (placementType == OpticalElement::Type::MIRROR) {
+                        if (VectorMath::distance(placementStartPos, mousePos) > 1.0f) { // Min length
+                             elements.push_back(std::make_unique<Mirror>(placementStartPos, mousePos));
+                        }
+                    }
+                    currentMode = Mode::IDLE;
+                    placementType = OpticalElement::Type::NONE;
+                } else if (currentMode == Mode::IDLE) {
+                    selectedElementIndex = findElementAt(mousePos);
+                    if (selectedElementIndex.has_value()) {
+                        currentMode = Mode::DRAGGING_ELEMENT;
+                        lastMousePos = mousePos;
+                    }
+                }
+            }
+        } else if (event.type == sf::Event::MouseButtonReleased) {
+            if (event.mouseButton.button == sf::Mouse::Left) {
+                if (currentMode == Mode::DRAGGING_ELEMENT) {
+                    currentMode = Mode::IDLE;
+                }
+            }
+        } else if (event.type == sf::Event::MouseMoved) {
+            if (currentMode == Mode::PLACING_END) {
+                placementPreviewLine[1].position = mousePos;
+            } else if (currentMode == Mode::DRAGGING_ELEMENT && selectedElementIndex.has_value()) {
+                sf::Vector2f delta = mousePos - lastMousePos;
+                elements[selectedElementIndex.value()]->move(delta);
+                lastMousePos = mousePos;
+            }
         }
     }
 }
@@ -139,6 +209,28 @@ void render(sf::RenderWindow &window) {
     }
 
     window.display();
+    for (const auto &path : rayPaths) { /* ... */ }
+
+    if (currentMode == Mode::PLACING_END && (placementType == OpticalElement::Type::MIRROR /* || LENS later */)) {
+        window.draw(placementPreviewLine);
+    }
+
+    for (size_t i = 0; i < elements.size(); ++i) {
+        if (elements[i]) {
+            elements[i]->draw(window);
+            if (selectedElementIndex.has_value() && selectedElementIndex.value() == i && currentMode != Mode::PLACING_START && currentMode != Mode::PLACING_END) {
+                // Простое выделение: Нарисуем круг в центре выбранного элемента
+                sf::CircleShape selectionCircle(5.f);
+                selectionCircle.setOrigin(5.f, 5.f);
+                selectionCircle.setPosition(elements[i]->getCenter());
+                selectionCircle.setFillColor(sf::Color::Transparent);
+                selectionCircle.setOutlineColor(sf::Color::Blue);
+                selectionCircle.setOutlineThickness(2.f);
+                window.draw(selectionCircle);
+            }
+        }
+    }
+    window.display();
 }
 
 void rebuildSourcesVector()
@@ -159,8 +251,6 @@ void rebuildSourcesVector()
 
 const unsigned int WINDOW_WIDTH = 1200;
 const unsigned int WINDOW_HEIGHT = 800;
-
-sf::Vector2f mousePos;
 
 
 int main() {
