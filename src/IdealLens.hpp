@@ -234,6 +234,79 @@ public:
     {
         return focalLength;
     }
+    void draw(sf::RenderTarget &target) const override
+    {
+        // Тело линзы
+        float thickness = 3.0f;
+        sf::RectangleShape rect(sf::Vector2f(height, thickness));
+        rect.setOrigin(height / 2.f, thickness / 2.f);
+        rect.setPosition(center);
+        rect.setRotation(angle * 180.f / M_PI);
+        rect.setFillColor(color);
+        target.draw(rect);
+
+        // Стрелки
+        float arrowSize = 10.f;
+        sf::ConvexShape arrowTop(3);
+        sf::ConvexShape arrowBottom(3);
+        const sf::Vector2f p1 = getP1();
+        const sf::Vector2f p2 = getP2();
+        sf::Vector2f dir = VectorMath::normalize(p2 - p1);
+        sf::Vector2f normal(-dir.y, dir.x);
+        sf::Vector2f topBase = p1;
+        sf::Vector2f bottomBase = p2;
+        // F<0 -> наружу, F>=0 -> внутрь
+        if (focalLength < 0)
+        {
+            arrowTop.setPoint(0, topBase - normal * arrowSize);
+            arrowTop.setPoint(1, topBase + dir * arrowSize);
+            arrowTop.setPoint(2, topBase + normal * arrowSize);
+            arrowBottom.setPoint(0, bottomBase - normal * arrowSize);
+            arrowBottom.setPoint(1, bottomBase - dir * arrowSize);
+            arrowBottom.setPoint(2, bottomBase + normal * arrowSize);
+        }
+        else
+        {
+            arrowTop.setPoint(0, topBase - normal * arrowSize);
+            arrowTop.setPoint(1, topBase - dir * arrowSize);
+            arrowTop.setPoint(2, topBase + normal * arrowSize);
+            arrowBottom.setPoint(0, bottomBase - normal * arrowSize);
+            arrowBottom.setPoint(1, bottomBase + dir * arrowSize);
+            arrowBottom.setPoint(2, bottomBase + normal * arrowSize);
+        }
+        arrowTop.setFillColor(sf::Color::Red);
+        arrowBottom.setFillColor(sf::Color::Red);
+        target.draw(arrowTop);
+        target.draw(arrowBottom);
+
+        // Фокусы
+        if (std::abs(focalLength) > EPSILON)
+        {
+            sf::Vector2f opticalAxisDir = normal;
+            sf::Vector2f focus1 = center + opticalAxisDir * focalLength;
+            sf::Vector2f focus2 = center - opticalAxisDir * focalLength;
+            sf::CircleShape focusShape(3.f);
+            focusShape.setOrigin(3.f, 3.f);
+            focusShape.setFillColor(sf::Color::Blue);
+            focusShape.setPosition(focus1);
+            target.draw(focusShape);
+            focusShape.setFillColor(sf::Color::Blue);
+            focusShape.setPosition(focus2);
+            target.draw(focusShape);
+        }
+        // Текст F=... рисуется в main.cpp
+    }
+    void drawHandles(sf::RenderTarget &target, sf::Color moveColor, sf::Color resizeColor) const override
+    {
+        auto handles = getHandles();
+        sf::CircleShape handleShape(5.f);
+        handleShape.setOrigin(5.f, 5.f);
+        handleShape.setFillColor(resizeColor);
+        handleShape.setPosition(handles[1]);
+        target.draw(handleShape);
+        handleShape.setPosition(handles[2]);
+        target.draw(handleShape);
+    }
 };
 
 #endif // HEADER_GUARD_IDEAL_LENS_HPP

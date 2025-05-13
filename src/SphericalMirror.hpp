@@ -261,6 +261,41 @@ public:
     {
         return radius;
     }
+    void draw(sf::RenderTarget &target) const override
+    {
+        const int segments = std::max(10, static_cast<int>(std::abs(radius) * spanAngle / 4.0f)); // Плотность сегментов
+        sf::VertexArray arcStrip(sf::TriangleStrip, (segments + 1) * 2);                          // Массив вершин для ленты треугольников
+        float r = std::abs(radius);                                                               // Абсолютный радиус для отрисовки
+        float halfThickness = thickness / 2.0f;
+        for (int i = 0; i <= segments; ++i)
+        {
+            float currentAngle = startAngle + spanAngle * (static_cast<float>(i) / segments);
+            float cosA = std::cos(currentAngle);
+            float sinA = std::sin(currentAngle);
+            sf::Vector2f dir(cosA, sinA);
+            arcStrip[i * 2].position = center + (r - halfThickness) * dir;
+            arcStrip[i * 2].color = color;
+            arcStrip[i * 2 + 1].position = center + (r + halfThickness) * dir;
+            arcStrip[i * 2 + 1].color = color;
+        }
+        target.draw(arcStrip);
+    }
+    void drawHandles(sf::RenderTarget &target, sf::Color moveColor, sf::Color resizeColor) const override
+    {
+        auto handles = getHandles();
+        sf::CircleShape handleShape(5.f);
+        handleShape.setOrigin(5.f, 5.f);
+        // Ручки углов
+        handleShape.setFillColor(resizeColor);
+        handleShape.setPosition(handles[1]);
+        target.draw(handleShape);
+        handleShape.setPosition(handles[2]);
+        target.draw(handleShape);
+        // Ручка центра
+        handleShape.setFillColor(moveColor);
+        handleShape.setPosition(handles[0]);
+        target.draw(handleShape);
+    }
 };
 
 #endif // HEADER_GUARD_SPHERICAL_MIRROR
