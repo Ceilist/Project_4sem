@@ -54,6 +54,69 @@ public:
         }
     }
 
+    void draw(sf::RenderTarget &target) const override
+    {
+        // Тело линзы
+        float thickness = 3.0f;
+        sf::RectangleShape rect(sf::Vector2f(height, thickness));
+        rect.setOrigin(height / 2.f, thickness / 2.f);
+        rect.setPosition(center);
+        rect.setRotation(angle * 180.f / M_PI);
+        rect.setFillColor(color);
+        target.draw(rect);
+
+        // Стрелки
+        float arrowSize = 10.f;
+        sf::ConvexShape arrowTop(3);
+        sf::ConvexShape arrowBottom(3);
+        const sf::Vector2f p1 = getP1();
+        const sf::Vector2f p2 = getP2();
+        sf::Vector2f dir = VectorMath::normalize(p2 - p1);
+        sf::Vector2f normal(-dir.y, dir.x);
+        sf::Vector2f topBase = p1;
+        sf::Vector2f bottomBase = p2;
+        // F<0 -> наружу, F>=0 -> внутрь
+        if (focalLength < 0)
+        {
+            arrowTop.setPoint(0, topBase - normal * arrowSize);
+            arrowTop.setPoint(1, topBase + dir * arrowSize);
+            arrowTop.setPoint(2, topBase + normal * arrowSize);
+            arrowBottom.setPoint(0, bottomBase - normal * arrowSize);
+            arrowBottom.setPoint(1, bottomBase - dir * arrowSize);
+            arrowBottom.setPoint(2, bottomBase + normal * arrowSize);
+        }
+        else
+        {
+            arrowTop.setPoint(0, topBase - normal * arrowSize);
+            arrowTop.setPoint(1, topBase - dir * arrowSize);
+            arrowTop.setPoint(2, topBase + normal * arrowSize);
+            arrowBottom.setPoint(0, bottomBase - normal * arrowSize);
+            arrowBottom.setPoint(1, bottomBase + dir * arrowSize);
+            arrowBottom.setPoint(2, bottomBase + normal * arrowSize);
+        }
+        arrowTop.setFillColor(sf::Color::Red);
+        arrowBottom.setFillColor(sf::Color::Red);
+        target.draw(arrowTop);
+        target.draw(arrowBottom);
+
+        // Фокусы
+        if (std::abs(focalLength) > EPSILON)
+        {
+            sf::Vector2f opticalAxisDir = normal;
+            sf::Vector2f focus1 = center + opticalAxisDir * focalLength;
+            sf::Vector2f focus2 = center - opticalAxisDir * focalLength;
+            sf::CircleShape focusShape(3.f);
+            focusShape.setOrigin(3.f, 3.f);
+            focusShape.setFillColor(sf::Color::Blue);
+            focusShape.setPosition(focus1);
+            target.draw(focusShape);
+            focusShape.setFillColor(sf::Color::Blue);
+            focusShape.setPosition(focus2);
+            target.draw(focusShape);
+        }
+        // Текст F=... рисуется в main.cpp
+    }
+
     VectorMath::IntersectionResult findIntersection(const Ray &ray) const override { return VectorMath::raySegmentIntersection(ray.origin, ray.direction, getP1(), getP2()); }
 
     RayAction interact(const Ray &incomingRay, const sf::Vector2f &intersectionPoint) const override
@@ -87,23 +150,14 @@ public:
         return RayAction(intersectionPoint, outgoingRay);
     }
 
-    bool isPointNear(const sf::Vector2f &point, float tolerance = 5.0f) const override
-    {
-        return VectorMath::distancePointSegment(point, getP1(), getP2()) <= tolerance;
-    }
+    bool isPointNear(const sf::Vector2f &point, float tolerance = 5.0f) const override { return VectorMath::distancePointSegment(point, getP1(), getP2()) <= tolerance; }
     void move(const sf::Vector2f &delta) override
     {
         center += delta;
         updateParameterString();
     }
-    sf::Vector2f getCenter() const override
-    {
-        return center;
-    }
-    std::vector<sf::Vector2f> getHandles() const override
-    {
-        return {center, getP1(), getP2()};
-    }
+    sf::Vector2f getCenter() const override { return center; }
+    std::vector<sf::Vector2f> getHandles() const override { return {center, getP1(), getP2()}; }
     int getHandleAtPoint(const sf::Vector2f &point, float tolerance = 8.0f) const override
     {
         auto handles = getHandles();
@@ -139,7 +193,17 @@ public:
             updateParameterString();
         }
     }
-
+    void drawHandles(sf::RenderTarget &target, sf::Color moveColor, sf::Color resizeColor) const override
+    {
+        auto handles = getHandles();
+        sf::CircleShape handleShape(5.f);
+        handleShape.setOrigin(5.f, 5.f);
+        handleShape.setFillColor(resizeColor);
+        handleShape.setPosition(handles[1]);
+        target.draw(handleShape);
+        handleShape.setPosition(handles[2]);
+        target.draw(handleShape);
+    }
     void rotate(float angleDelta) override
     {
         angle += angleDelta;
@@ -150,10 +214,7 @@ public:
         angle = newAngle;
         updateParameterString();
     }
-    float getAngle() const override
-    {
-        return angle;
-    }
+    float getAngle() const override { return angle; }
 
     void adjustParameter(float delta) override
     {
@@ -187,10 +248,7 @@ public:
         focalLengthText.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
         focalLengthText.setPosition(textPos);
     }
-    std::string getParameterString() const override
-    {
-        return focalLengthText.getString();
-    }
+    std::string getParameterString() const override { return focalLengthText.getString(); }
     sf::FloatRect getParameterBounds() const override
     {
         if (!fontPtr)
@@ -230,10 +288,7 @@ public:
         }
         updateParameterString();
     }
-    float getFocalLength() const
-    {
-        return focalLength;
-    }
+    float getFocalLength() const { return focalLength; }
 };
 
 #endif // HEADER_GUARD_IDEAL_LENS_HPP

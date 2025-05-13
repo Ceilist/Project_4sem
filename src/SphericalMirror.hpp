@@ -32,25 +32,36 @@ public:
         updateParameterString();
     }
 
-    Type getType() const override
-    {
-        return Type::SPHERICAL_MIRROR;
-    }
+    Type getType() const override { return Type::SPHERICAL_MIRROR; }
 
     // Получение координат конечных точек дуги
-    sf::Vector2f getP1() const
-    {
-        return center + std::abs(radius) * sf::Vector2f(std::cos(startAngle), std::sin(startAngle));
-    }
+    sf::Vector2f getP1() const { return center + std::abs(radius) * sf::Vector2f(std::cos(startAngle), std::sin(startAngle)); }
     sf::Vector2f getP2() const
     {
         float endAngle = startAngle + spanAngle;
         return center + std::abs(radius) * sf::Vector2f(std::cos(endAngle), std::sin(endAngle));
     }
     // Получение нормали в точке на поверхности (направлена к центру кривизны)
-    sf::Vector2f getNormalAt(const sf::Vector2f &pointOnSurface) const
+    sf::Vector2f getNormalAt(const sf::Vector2f &pointOnSurface) const { return VectorMath::normalize(center - pointOnSurface); }
+
+    void draw(sf::RenderTarget &target) const override
     {
-        return VectorMath::normalize(center - pointOnSurface);
+        const int segments = std::max(10, static_cast<int>(std::abs(radius) * spanAngle / 4.0f)); // Плотность сегментов
+        sf::VertexArray arcStrip(sf::TriangleStrip, (segments + 1) * 2);                          // Массив вершин для ленты треугольников
+        float r = std::abs(radius);                                                               // Абсолютный радиус для отрисовки
+        float halfThickness = thickness / 2.0f;
+        for (int i = 0; i <= segments; ++i)
+        {
+            float currentAngle = startAngle + spanAngle * (static_cast<float>(i) / segments);
+            float cosA = std::cos(currentAngle);
+            float sinA = std::sin(currentAngle);
+            sf::Vector2f dir(cosA, sinA);
+            arcStrip[i * 2].position = center + (r - halfThickness) * dir;
+            arcStrip[i * 2].color = color;
+            arcStrip[i * 2 + 1].position = center + (r + halfThickness) * dir;
+            arcStrip[i * 2 + 1].color = color;
+        }
+        target.draw(arcStrip);
     }
 
     VectorMath::IntersectionResult findIntersection(const Ray &ray) const override
@@ -105,14 +116,8 @@ public:
         center += delta;
         updateParameterString();
     }
-    sf::Vector2f getCenter() const override
-    {
-        return center;
-    }
-    std::vector<sf::Vector2f> getHandles() const override
-    {
-        return {center, getP1(), getP2()};
-    } // Центр, начало, конец дуги
+    sf::Vector2f getCenter() const override { return center; }
+    std::vector<sf::Vector2f> getHandles() const override { return {center, getP1(), getP2()}; } // Центр, начало, конец дуги
     int getHandleAtPoint(const sf::Vector2f &point, float tolerance = 8.0f) const override
     {
         auto handles = getHandles();
@@ -154,6 +159,22 @@ public:
             spanAngle = std::max(0.f, std::min(newSpan, static_cast<float>(2.0 * M_PI)));
             updateParameterString();
         }
+    }
+    void drawHandles(sf::RenderTarget &target, sf::Color moveColor, sf::Color resizeColor) const override
+    {
+        auto handles = getHandles();
+        sf::CircleShape handleShape(5.f);
+        handleShape.setOrigin(5.f, 5.f);
+        // Ручки углов
+        handleShape.setFillColor(resizeColor);
+        handleShape.setPosition(handles[1]);
+        target.draw(handleShape);
+        handleShape.setPosition(handles[2]);
+        target.draw(handleShape);
+        // Ручка центра
+        handleShape.setFillColor(moveColor);
+        handleShape.setPosition(handles[0]);
+        target.draw(handleShape);
     }
 
     void rotate(float angleDelta) override
@@ -200,10 +221,7 @@ public:
         radiusText.setOrigin(textBounds.left + textBounds.width / 2.0f, textBounds.top + textBounds.height / 2.0f);
         radiusText.setPosition(textPos);
     }
-    std::string getParameterString() const override
-    {
-        return radiusText.getString();
-    }
+    std::string getParameterString() const override { return radiusText.getString(); }
     sf::FloatRect getParameterBounds() const override
     {
         if (!fontPtr)
@@ -257,10 +275,7 @@ public:
             updateParameterString();
         }
     }
-    float getRadius() const
-    {
-        return radius;
-    }
+    float getRadius() const { return radius; }
 };
 
 #endif // HEADER_GUARD_SPHERICAL_MIRROR
