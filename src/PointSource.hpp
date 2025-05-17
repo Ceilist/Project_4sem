@@ -3,6 +3,7 @@
 
 #include "OpticalElement.hpp"
 
+
 class PointSource : public OpticalElement
 {
 public:
@@ -93,6 +94,7 @@ public:
     void move(const sf::Vector2f &delta) override
     {
         position += delta;
+        updateParameterString();
     }
     sf::Vector2f getCenter() const override { return position; }
 

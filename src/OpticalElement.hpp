@@ -10,7 +10,12 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
+#include <stdexcept>
+#include <iostream>
+
 #include "VectorMath.hpp"
+
+
 
 // Структура, представляющая луч
 struct Ray

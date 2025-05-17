@@ -57,7 +57,6 @@ public:
         if (VectorMath::dot(normal, incomingRay.direction) > 0)
             normal = -normal;
         sf::Vector2f reflectedDir = VectorMath::reflect(incomingRay.direction, normal); // Отражаем луч
-        // RayAction result(intersectionPoint, Ray{intersectionPoint + reflectedDir * EPSILON * 10.f, reflectedDir, incomingRay.bounces_left - 1, incomingRay.color});
         return RayAction(intersectionPoint, Ray{intersectionPoint + reflectedDir * EPSILON * 10.f, reflectedDir, incomingRay.bounces_left - 1, incomingRay.color});
     }
 

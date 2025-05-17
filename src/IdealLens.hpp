@@ -3,6 +3,7 @@
 
 #include "OpticalElement.hpp"
 
+
 class IdealLens : public OpticalElement
 {
 public:
@@ -294,7 +295,7 @@ public:
             focusShape.setPosition(focus2);
             target.draw(focusShape);
         }
-        // Текст F=... рисуется в main.cpp
+        // Текст F=... рисуется в OpticalApplication.cpp
     }
     void drawHandles(sf::RenderTarget &target, sf::Color moveColor, sf::Color resizeColor) const override
     {
