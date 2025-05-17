@@ -49,7 +49,9 @@ namespace AppConstants {
 
 
     const std::vector<std::string> FONT_PATHS = {
-        "res/arial.ttf", "arial.ttf"
+        "res/arial.ttf", "arial.ttf", "C:/Windows/Fonts/arial.ttf",
+        "/Library/Fonts/Arial.ttf", "/usr/share/fonts/truetype/msttcorefonts/Arial.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
     };
 
 } // namespace AppConstants
