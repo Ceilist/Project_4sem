@@ -15,7 +15,7 @@ public:
     mutable sf::Font const *fontPtr = nullptr; // Указатель на шрифт
     float thickness = 4.0f;                    // Визуальная толщина зеркала
 
-    SphericalMirror(sf::Vector2f c, float r, float start, float span, sf::Color col = sf::Color(192, 192, 192))
+    SphericalMirror(sf::Vector2f c, float r, float start, float span, sf::Color col = sf::Color::White)
         : center(c), radius(r), startAngle(VectorMath::normalizeAngle(start)), spanAngle(std::max(0.f, span)), color(col)
     {
         if (std::abs(radius) < 1.f)

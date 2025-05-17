@@ -173,10 +173,18 @@ namespace VectorMath
     // Нормализует угол в диапазон [-PI, PI)
     inline float normalizeAngle(float angle)
     {
-        while (angle >= M_PI)
-            angle -= 2.f * M_PI;
-        while (angle < -M_PI)
-            angle += 2.f * M_PI;
+        angle = std::fmod(angle, 2*M_PI);
+
+        // Если угол в [PI, 2*PI), вычитаем 2*PI
+        if (angle >= M_PI)
+        {
+            angle -= 2*M_PI;
+        }
+        // Если угол в (-2*PI, -PI], добавляем 2*PI
+        else if (angle < -M_PI)
+        {
+            angle += 2*M_PI;
+        }
         return angle;
     }
 
